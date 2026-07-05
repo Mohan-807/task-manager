@@ -1,6 +1,7 @@
 import { createContext, useContext, useReducer, useCallback, useEffect } from 'react'
 import { authService } from '@/services/authService'
-import { storage } from '@/services/storageService'
+import { settingsService } from '@/services/settingsService'
+import { tokenService } from '@/services/tokenService'
 
 const AuthContext = createContext(null)
 
@@ -27,9 +28,25 @@ export function AuthProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState)
 
   useEffect(() => {
-    storage.init()
-    const saved = storage.getCurrentUser()
-    dispatch({ type: 'INIT_DONE', user: saved })
+    (async () => {
+      if (!tokenService.getAccessToken()) {
+        dispatch({ type: 'INIT_DONE', user: null })
+        return
+      }
+      try {
+        const user = await authService.getCurrentUser()
+        dispatch({ type: 'INIT_DONE', user })
+      } catch {
+        tokenService.clearTokens()
+        dispatch({ type: 'INIT_DONE', user: null })
+      }
+    })()
+  }, [])
+
+  useEffect(() => {
+    const handleSessionExpired = () => dispatch({ type: 'LOGOUT' })
+    window.addEventListener('auth:session-expired', handleSessionExpired)
+    return () => window.removeEventListener('auth:session-expired', handleSessionExpired)
   }, [])
 
   const login = useCallback(async (email, password) => {
@@ -51,7 +68,7 @@ export function AuthProvider({ children }) {
 
   const updateProfile = useCallback(async (data) => {
     if (!state.user) return
-    const updated = await authService.updateProfile(state.user.id, data)
+    const updated = await settingsService.updateProfile(data)
     dispatch({ type: 'UPDATE_USER', user: updated })
     return updated
   }, [state.user])

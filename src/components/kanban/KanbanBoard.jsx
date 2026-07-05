@@ -27,7 +27,7 @@ const DROP_ANIMATION = {
 
 export default function KanbanBoard({ tasks, users, projectId }) {
   const { user } = useAuth()
-  const { reorderTask, createTask, deleteTask, updateTask } = useTasks()
+  const { moveTask, createTask, deleteTask, updateTask } = useTasks()
   const toast = useNotification()
 
   const [activeId, setActiveId]         = useState(null)
@@ -85,11 +85,11 @@ export default function KanbanBoard({ tasks, users, projectId }) {
     const colTasks  = tasks.filter(t => t.projectId === projectId && t.status === targetColumn)
     const newOrder  = colTasks.length + 1
 
-    await reorderTask(taskId, targetColumn, newOrder, user.id)
+    await moveTask(taskId, targetColumn, newOrder)
 
     const colLabel = { todo: 'Todo', in_progress: 'In Progress', testing: 'Testing', done: 'Done' }
     toast.success('Task moved', `Moved to ${colLabel[targetColumn] ?? targetColumn}`)
-  }, [tasks, user, projectId, reorderTask, toast])
+  }, [tasks, user, projectId, moveTask, toast])
 
   const handleAddTask = useCallback(async (columnId) => {
     if (!canCreate) {
@@ -101,14 +101,14 @@ export default function KanbanBoard({ tasks, users, projectId }) {
       status: columnId,
       projectId,
       priority: 'medium',
-    }, user.id)
+    })
     setSelectedTask(task)
     toast.success('Task created')
   }, [canCreate, createTask, projectId, user, toast])
 
   const handleSaveTask = useCallback(async (updated) => {
     try {
-      await updateTask(updated.id, updated, user.id)
+      await updateTask(updated.id, updated)
       toast.success('Task saved')
       setSelectedTask(null)
     } catch {
@@ -118,7 +118,7 @@ export default function KanbanBoard({ tasks, users, projectId }) {
 
   const handleDeleteTask = useCallback(async (taskId) => {
     try {
-      await deleteTask(taskId, user.id)
+      await deleteTask(taskId)
       toast.success('Task deleted')
       setSelectedTask(null)
     } catch {
@@ -171,7 +171,6 @@ export default function KanbanBoard({ tasks, users, projectId }) {
         onClose={() => setSelectedTask(null)}
         onSave={handleSaveTask}
         onDelete={handleDeleteTask}
-        projectId={projectId}
       />
     </>
   )

@@ -2,10 +2,7 @@ import { Link } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import ProjectProgressCard from './ProjectProgressCard'
 
-export default function RecentProjects({ projects, users }) {
-  const getUsersForProject = (project) =>
-    users.filter(u => project.memberIds.includes(u.id))
-
+export default function RecentProjects({ projects }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -26,7 +23,7 @@ export default function RecentProjects({ projects, users }) {
           <ProjectProgressCard
             key={project.id}
             project={project}
-            members={getUsersForProject(project)}
+            members={project.members}
           />
         ))}
       </div>

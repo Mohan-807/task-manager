@@ -27,7 +27,7 @@ export function UserProvider({ children }) {
   const loadUsers = useCallback(async () => {
     dispatch({ type: 'LOAD_START' })
     try {
-      const users = await userService.getUsers()
+      const { data: users } = await userService.getUsers()
       dispatch({ type: 'LOAD_OK', users })
     } catch (err) {
       dispatch({ type: 'LOAD_FAIL', error: err.message })
@@ -65,7 +65,7 @@ export function UserProvider({ children }) {
 
   // Sync a single user update from outside (e.g. project member changes)
   const syncUsers = useCallback(() => {
-    userService.getUsers().then(users => dispatch({ type: 'LOAD_OK', users }))
+    userService.getUsers().then(({ data: users }) => dispatch({ type: 'LOAD_OK', users }))
   }, [])
 
   return (

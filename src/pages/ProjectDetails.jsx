@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useParams, useSearchParams, Link, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft, Pencil, LayoutDashboard,
@@ -23,6 +23,7 @@ import { useProjects } from '@/contexts/ProjectContext'
 import { useTasks } from '@/contexts/TaskContext'
 import { useUsers } from '@/contexts/UserContext'
 import { useNotification } from '@/contexts/NotificationContext'
+import { activityService } from '@/services/activityService'
 import { hasPermission, canViewProject } from '@/utils/permissions'
 
 const TABS = [
@@ -40,14 +41,20 @@ export default function ProjectDetails() {
 
   const { user } = useAuth()
   const { projects, updateProject, deleteProject } = useProjects()
-  const { getTasksForProject, activities } = useTasks()
+  const { getTasksForProject, loadTasksForProject } = useTasks()
   const { users } = useUsers()
   const toast = useNotification()
 
   const [editOpen, setEditOpen] = useState(false)
   const [saving, setSaving]     = useState(false)
+  const [projectActivities, setProjectActivities] = useState([])
 
   const project = projects.find(p => p.id === id)
+
+  useEffect(() => {
+    loadTasksForProject(id)
+    activityService.getProjectActivities(id, { limit: 20 }).then(({ data }) => setProjectActivities(data))
+  }, [id, loadTasksForProject])
 
   if (!project) {
     return (
@@ -75,7 +82,6 @@ export default function ProjectDetails() {
   const members  = users.filter(u => project.memberIds.includes(u.id))
   const owner    = users.find(u => u.id === project.ownerId)
   const tasks    = getTasksForProject(id)
-  const projectActivities = activities.filter(a => a.projectId === id)
 
   const canEdit     = hasPermission(user?.role, 'project:edit')
   const canManageMembers = hasPermission(user?.role, 'member:manage')

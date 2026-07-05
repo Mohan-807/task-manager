@@ -1,32 +1,20 @@
-import { storage } from './storageService'
+import { apiClient } from './apiClient'
 
 export const activityService = {
-  getActivities: () => new Promise((resolve) => {
-    resolve(storage.getActivities())
-  }),
+  getActivities: async (params = {}) => {
+    const { data } = await apiClient.get('/activities', { params: { per_page: 20, ...params } })
+    return data
+  },
 
-  getActivitiesForProject: (projectId) => new Promise((resolve) => {
-    const all = storage.getActivities()
-    resolve(all.filter(a => a.projectId === projectId))
-  }),
+  getProjectActivities: async (projectId, params = {}) => {
+    const { data } = await apiClient.get(`/projects/${projectId}/activities`, {
+      params: { per_page: 20, ...params },
+    })
+    return data
+  },
 
-  getActivitiesForTask: (taskId) => new Promise((resolve) => {
-    const all = storage.getActivities()
-    resolve(all.filter(a => a.taskId === taskId))
-  }),
-
-  addActivity: (data) => {
-    const activity = {
-      id: `act_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,5)}`,
-      type: data.type,
-      userId: data.userId,
-      projectId: data.projectId ?? null,
-      taskId: data.taskId ?? null,
-      message: data.message,
-      createdAt: new Date().toISOString(),
-    }
-    const all = storage.getActivities()
-    storage.saveActivities([activity, ...all])
-    return activity
+  getTaskActivities: async (taskId, params = {}) => {
+    const { data } = await apiClient.get(`/tasks/${taskId}/activities`, { params })
+    return data
   },
 }

@@ -9,6 +9,7 @@ import { formatDate, timeAgo } from '@/utils/formatters'
 import { useAuth } from '@/contexts/AuthContext'
 import { useTasks } from '@/contexts/TaskContext'
 import { useNotification } from '@/contexts/NotificationContext'
+import { activityService } from '@/services/activityService'
 import { canEditTask, canDeleteTask, hasPermission } from '@/utils/permissions'
 
 const STATUSES = [
@@ -136,9 +137,9 @@ function CommentItem({ comment, author, currentUserId, isAdmin, onEdit, onDelete
   )
 }
 
-export default function TaskDrawer({ task, users, isOpen, onClose, onSave, onDelete, projectId }) {
+export default function TaskDrawer({ task, users, isOpen, onClose, onSave, onDelete }) {
   const { user } = useAuth()
-  const { loadComments, comments: allComments, addComment, updateComment, deleteComment, activities } = useTasks()
+  const { loadComments, comments: allComments, addComment, updateComment, deleteComment } = useTasks()
   const toast = useNotification()
 
   const [form, setForm]           = useState(null)
@@ -146,9 +147,9 @@ export default function TaskDrawer({ task, users, isOpen, onClose, onSave, onDel
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [saving, setSaving]       = useState(false)
   const [sendingComment, setSendingComment] = useState(false)
+  const [taskActivities, setTaskActivities] = useState([])
 
-  const comments    = task ? (allComments[task.id] ?? []) : []
-  const taskActivities = activities.filter(a => a.taskId === task?.id).slice(0, 5)
+  const comments = task ? (allComments[task.id] ?? []) : []
 
   const isAdmin = user?.role === 'admin'
   const canEdit = form ? canEditTask(user?.role, user?.id, form) : false
@@ -162,6 +163,7 @@ export default function TaskDrawer({ task, users, isOpen, onClose, onSave, onDel
       setNewComment('')
       setConfirmDelete(false)
       loadComments(task.id)
+      activityService.getTaskActivities(task.id, { limit: 5 }).then(({ data }) => setTaskActivities(data))
     }
   }, [task, isOpen, loadComments])
 
@@ -183,7 +185,7 @@ export default function TaskDrawer({ task, users, isOpen, onClose, onSave, onDel
     if (!newComment.trim()) return
     setSendingComment(true)
     try {
-      await addComment(task.id, newComment, user.id, projectId)
+      await addComment(task.id, newComment)
       setNewComment('')
     } catch {
       toast.error('Failed to add comment')
@@ -194,7 +196,7 @@ export default function TaskDrawer({ task, users, isOpen, onClose, onSave, onDel
 
   const handleEditComment = async (commentId, content) => {
     try {
-      await updateComment(commentId, content, user.id)
+      await updateComment(commentId, content)
     } catch {
       toast.error('Failed to edit comment')
     }
@@ -202,7 +204,7 @@ export default function TaskDrawer({ task, users, isOpen, onClose, onSave, onDel
 
   const handleDeleteComment = async (commentId) => {
     try {
-      await deleteComment(commentId, task.id, user.id, isAdmin)
+      await deleteComment(commentId, task.id)
     } catch {
       toast.error('Failed to delete comment')
     }
@@ -413,23 +415,18 @@ export default function TaskDrawer({ task, users, isOpen, onClose, onSave, onDel
               Activity
             </label>
             <div className="space-y-2.5">
-              {taskActivities.map(act => {
-                const actUser = getUser(act.userId)
-                return (
-                  <div key={act.id} className="flex items-start gap-2.5 text-xs">
-                    <Avatar user={actUser} size="xs" className="shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p
-                        className="text-gray-500 leading-relaxed"
-                        dangerouslySetInnerHTML={{
-                          __html: `<span class="font-semibold text-gray-700">${actUser?.name ?? 'Someone'}</span> ${act.message}`
-                        }}
-                      />
-                      <span className="text-gray-300 text-[11px]">{timeAgo(act.createdAt)}</span>
-                    </div>
+              {taskActivities.map(act => (
+                <div key={act.id} className="flex items-start gap-2.5 text-xs">
+                  <Avatar user={act.user} size="xs" className="shrink-0 mt-0.5" />
+                  <div className="flex-1">
+                    <p
+                      className="text-gray-500 leading-relaxed"
+                      dangerouslySetInnerHTML={{ __html: act.message }}
+                    />
+                    <span className="text-gray-300 text-[11px]">{timeAgo(act.createdAt)}</span>
                   </div>
-                )
-              })}
+                </div>
+              ))}
             </div>
           </div>
         )}

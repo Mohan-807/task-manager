@@ -8,6 +8,7 @@ import Badge from '@/components/ui/Badge'
 import { cn } from '@/utils/cn'
 import { useAuth } from '@/contexts/AuthContext'
 import { useNotification } from '@/contexts/NotificationContext'
+import { settingsService } from '@/services/settingsService'
 
 const ROLE_VARIANT = { admin: 'primary', manager: 'purple', developer: 'info', tester: 'warning' }
 
@@ -146,7 +147,9 @@ function NotificationsTab() {
     memberAdded:    true,
     weeklyDigest:   false,
   })
-  const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved]   = useState(false)
+  const toast = useNotification()
 
   const toggle = (key) => { setPrefs(p => ({ ...p, [key]: !p[key] })); setSaved(false) }
 
@@ -158,6 +161,19 @@ function NotificationsTab() {
     { key: 'memberAdded',    label: 'Member added to project',   desc: 'When a member joins your project' },
     { key: 'weeklyDigest',   label: 'Weekly digest email',       desc: 'A weekly summary of your activity' },
   ]
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const updated = await settingsService.updateNotifications(prefs)
+      setPrefs(updated)
+      setSaved(true)
+    } catch {
+      toast.error('Failed to save notification preferences')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <Section title="Notification Preferences" description="Choose what you want to be notified about.">
@@ -185,7 +201,7 @@ function NotificationsTab() {
         ))}
       </div>
       <div className="flex items-center gap-3 pt-1">
-        <Button onClick={() => setSaved(true)}>Save Preferences</Button>
+        <Button onClick={handleSave} loading={saving}>Save Preferences</Button>
         {saved && <span className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium"><Check size={14} /> Saved</span>}
       </div>
     </Section>
@@ -213,11 +229,20 @@ function SecurityTab() {
     if (Object.keys(errs).length) { setErrors(errs); return }
 
     setSaving(true)
-    await new Promise(r => setTimeout(r, 600))
-    setSaving(false)
-    setSaved(true)
-    setForm({ current: '', next: '', confirm: '' })
-    toast.success('Password changed', 'Your password has been updated.')
+    try {
+      await settingsService.changePassword({
+        currentPassword: form.current,
+        newPassword:     form.next,
+        confirmPassword: form.confirm,
+      })
+      setSaved(true)
+      setForm({ current: '', next: '', confirm: '' })
+      toast.success('Password changed', 'Your password has been updated.')
+    } catch (err) {
+      toast.error('Failed to change password', err.message)
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -236,7 +261,23 @@ function SecurityTab() {
 function AppearanceTab() {
   const [theme, setTheme]     = useState('light')
   const [density, setDensity] = useState('default')
+  const [saving, setSaving]   = useState(false)
   const [saved, setSaved]     = useState(false)
+  const toast = useNotification()
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const updated = await settingsService.updateAppearance({ theme, density })
+      setTheme(updated.theme)
+      setDensity(updated.density)
+      setSaved(true)
+    } catch {
+      toast.error('Failed to save appearance preferences')
+    } finally {
+      setSaving(false)
+    }
+  }
 
   return (
     <Section title="Appearance" description="Customize how TaskFlow looks for you.">
@@ -281,7 +322,7 @@ function AppearanceTab() {
       </div>
 
       <div className="flex items-center gap-3 pt-1">
-        <Button onClick={() => setSaved(true)}>Save Preferences</Button>
+        <Button onClick={handleSave} loading={saving}>Save Preferences</Button>
         {saved && <span className="flex items-center gap-1.5 text-sm text-emerald-600 font-medium"><Check size={14} /> Saved</span>}
       </div>
     </Section>

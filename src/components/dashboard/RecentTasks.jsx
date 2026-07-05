@@ -6,10 +6,7 @@ import PriorityBadge from '@/components/ui/PriorityBadge'
 import { formatShortDate, isOverdue } from '@/utils/formatters'
 import { cn } from '@/utils/cn'
 
-export default function RecentTasks({ tasks, users, projects }) {
-  const getUser = (id) => users.find(u => u.id === id)
-  const getProject = (id) => projects.find(p => p.id === id)
-
+export default function RecentTasks({ tasks }) {
   return (
     <div>
       <div className="flex items-center justify-between mb-4">
@@ -28,8 +25,7 @@ export default function RecentTasks({ tasks, users, projects }) {
       <div className="bg-white border border-gray-100 rounded-2xl overflow-hidden shadow-sm">
         <div className="divide-y divide-gray-50">
           {tasks.map(task => {
-            const assignee = getUser(task.assigneeId)
-            const project = getProject(task.projectId)
+            const assignee = task.assignee
             const overdue = isOverdue(task.dueDate) && task.status !== 'done'
 
             return (
@@ -43,16 +39,8 @@ export default function RecentTasks({ tasks, users, projects }) {
                     {task.title}
                   </p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    {project && (
-                      <span
-                        className="text-xs text-gray-400 flex items-center gap-1"
-                      >
-                        <span
-                          className="w-1.5 h-1.5 rounded-full shrink-0"
-                          style={{ backgroundColor: project.color }}
-                        />
-                        {project.name}
-                      </span>
+                    {task.projectName && (
+                      <span className="text-xs text-gray-400">{task.projectName}</span>
                     )}
                   </div>
                 </div>

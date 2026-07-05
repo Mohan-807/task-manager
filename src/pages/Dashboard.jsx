@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { FolderKanban, CheckSquare, Users, TrendingUp } from 'lucide-react'
 import PageHeader from '@/components/ui/PageHeader'
 import StatsCard from '@/components/dashboard/StatsCard'
@@ -9,17 +9,35 @@ import ActivityTimeline from '@/components/dashboard/ActivityTimeline'
 import { SkeletonStatCard, SkeletonDashboardBlock } from '@/components/ui/Skeleton'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProjects } from '@/contexts/ProjectContext'
-import { useTasks } from '@/contexts/TaskContext'
-import { useUsers } from '@/contexts/UserContext'
+import { dashboardService } from '@/services/dashboardService'
 
 export default function Dashboard() {
   const { user } = useAuth()
   const { projects, loading: projLoading } = useProjects()
-  const { tasks, activities, loading: taskLoading } = useTasks()
-  const { users } = useUsers()
+
+  const [stats, setStats] = useState(null)
+  const [recentProjects, setRecentProjects] = useState([])
+  const [recentTasks, setRecentTasks] = useState([])
+  const [recentActivities, setRecentActivities] = useState([])
+  const [dashLoading, setDashLoading] = useState(true)
   const [showSkeleton, setShowSkeleton] = useState(true)
 
-  const loading = projLoading || taskLoading
+  const loading = projLoading || dashLoading
+
+  useEffect(() => {
+    Promise.all([
+      dashboardService.getStats(),
+      dashboardService.getRecentProjects(),
+      dashboardService.getRecentTasks(),
+      dashboardService.getActivities(),
+    ]).then(([statsRes, projectsRes, tasksRes, activitiesRes]) => {
+      setStats(statsRes)
+      setRecentProjects(projectsRes)
+      setRecentTasks(tasksRes)
+      setRecentActivities(activitiesRes)
+      setDashLoading(false)
+    })
+  }, [])
 
   useEffect(() => {
     if (!loading) {
@@ -28,67 +46,36 @@ export default function Dashboard() {
     }
   }, [loading])
 
-  const stats = useMemo(() => {
-    const activeProjects  = projects.filter(p => p.status === 'active')
-    const totalTasks      = tasks.length
-    const completedTasks  = tasks.filter(t => t.status === 'done').length
-    const activeMembers   = users.filter(u => u.status === 'active').length
-    const completionRate  = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0
-    return { activeProjects, totalTasks, completedTasks, activeMembers, completionRate }
-  }, [projects, tasks, users])
-
-  const recentProjects = useMemo(() =>
-    [...projects]
-      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
-      .slice(0, 4),
-  [projects])
-
-  const recentTasks = useMemo(() =>
-    [...tasks]
-      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt))
-      .slice(0, 7),
-  [tasks])
-
-  const recentActivities = useMemo(() => activities.slice(0, 8), [activities])
-
-  const STATS = useMemo(() => [
+  const STATS = stats ? [
     {
-      title:      'Active Projects',
-      value:      stats.activeProjects.length,
-      icon:       FolderKanban,
-      iconBg:     'bg-indigo-50',
-      iconColor:  'text-indigo-500',
-      trend:      20,
-      trendLabel: 'vs last month',
+      title:     'Active Projects',
+      value:     stats.activeProjects,
+      icon:      FolderKanban,
+      iconBg:    'bg-indigo-50',
+      iconColor: 'text-indigo-500',
     },
     {
-      title:      'Total Tasks',
-      value:      stats.totalTasks,
-      icon:       CheckSquare,
-      iconBg:     'bg-blue-50',
-      iconColor:  'text-blue-500',
-      trend:      12,
-      trendLabel: 'vs last month',
+      title:     'Total Tasks',
+      value:     stats.totalTasks,
+      icon:      CheckSquare,
+      iconBg:    'bg-blue-50',
+      iconColor: 'text-blue-500',
     },
     {
-      title:      'Team Members',
-      value:      stats.activeMembers,
-      icon:       Users,
-      iconBg:     'bg-emerald-50',
-      iconColor:  'text-emerald-500',
-      trend:      14,
-      trendLabel: 'new this month',
+      title:     'Team Members',
+      value:     stats.teamMembers,
+      icon:      Users,
+      iconBg:    'bg-emerald-50',
+      iconColor: 'text-emerald-500',
     },
     {
-      title:      'Completion Rate',
-      value:      `${stats.completionRate}%`,
-      icon:       TrendingUp,
-      iconBg:     'bg-amber-50',
-      iconColor:  'text-amber-500',
-      trend:      -3,
-      trendLabel: 'vs last month',
+      title:     'Completion Rate',
+      value:     `${stats.completionRate}%`,
+      icon:      TrendingUp,
+      iconBg:    'bg-amber-50',
+      iconColor: 'text-amber-500',
     },
-  ], [stats])
+  ] : []
 
   const firstName = user?.name?.split(' ')[0] ?? 'there'
 
@@ -130,7 +117,7 @@ export default function Dashboard() {
         <>
           <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 animate-[slideUp_0.35s_ease_both]">
             <div className="xl:col-span-2">
-              <RecentProjects projects={recentProjects} users={users} />
+              <RecentProjects projects={recentProjects} />
             </div>
             <div>
               <TaskStatusOverview projects={projects} />
@@ -142,10 +129,10 @@ export default function Dashboard() {
             style={{ animationDelay: '80ms' }}
           >
             <div className="xl:col-span-2">
-              <RecentTasks tasks={recentTasks} users={users} projects={projects} />
+              <RecentTasks tasks={recentTasks} />
             </div>
             <div>
-              <ActivityTimeline activities={recentActivities} users={users} />
+              <ActivityTimeline activities={recentActivities} />
             </div>
           </div>
         </>

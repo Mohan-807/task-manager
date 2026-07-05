@@ -15,9 +15,7 @@ const TYPE_CONFIG = {
   project_created: { icon: FolderPlus,           color: 'bg-pink-50 text-pink-500'    },
 }
 
-export default function ActivityTimeline({ activities, users }) {
-  const getUser = (id) => users.find(u => u.id === id)
-
+export default function ActivityTimeline({ activities }) {
   return (
     <div className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm">
       <h2 className="text-base font-semibold text-gray-900 mb-1">Activity</h2>
@@ -29,7 +27,6 @@ export default function ActivityTimeline({ activities, users }) {
 
         <div className="space-y-4">
           {activities.map((activity, idx) => {
-            const user = getUser(activity.userId)
             const config = TYPE_CONFIG[activity.type] ?? TYPE_CONFIG.task_created
             const Icon = config.icon
 
@@ -48,9 +45,7 @@ export default function ActivityTimeline({ activities, users }) {
                   <div className="flex items-start justify-between gap-2">
                     <p
                       className="text-xs text-gray-600 leading-relaxed"
-                      dangerouslySetInnerHTML={{
-                        __html: `<span class="font-semibold text-gray-800">${user?.name ?? 'Someone'}</span> ${activity.message}`
-                      }}
+                      dangerouslySetInnerHTML={{ __html: activity.message }}
                     />
                     <span className="text-[11px] text-gray-400 shrink-0 mt-0.5">
                       {timeAgo(activity.createdAt)}

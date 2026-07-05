@@ -20,14 +20,6 @@ function reducer(state, action) {
       projects: state.projects.map(p => p.id === action.project.id ? action.project : p),
     }
     case 'REMOVE':     return { ...state, projects: state.projects.filter(p => p.id !== action.id) }
-    case 'SYNC_COUNTS': return {
-      ...state,
-      projects: state.projects.map(p =>
-        p.id === action.projectId
-          ? { ...p, tasksCount: action.tasksCount, progress: action.progress }
-          : p
-      ),
-    }
     default: return state
   }
 }
@@ -38,7 +30,7 @@ export function ProjectProvider({ children }) {
   const loadProjects = useCallback(async () => {
     dispatch({ type: 'LOAD_START' })
     try {
-      const projects = await projectService.getProjects()
+      const { data: projects } = await projectService.getProjects()
       dispatch({ type: 'LOAD_OK', projects })
     } catch (err) {
       dispatch({ type: 'LOAD_FAIL', error: err.message })
@@ -47,38 +39,35 @@ export function ProjectProvider({ children }) {
 
   useEffect(() => { loadProjects() }, [loadProjects])
 
-  const createProject = useCallback(async (data, userId) => {
-    const project = await projectService.createProject(data, userId)
+  const createProject = useCallback(async (data) => {
+    const project = await projectService.createProject(data)
     dispatch({ type: 'ADD', project })
     return project
   }, [])
 
-  const updateProject = useCallback(async (id, data, userId) => {
-    const project = await projectService.updateProject(id, data, userId)
+  const updateProject = useCallback(async (id, data) => {
+    const project = await projectService.updateProject(id, data)
     dispatch({ type: 'UPDATE', project })
     return project
   }, [])
 
-  const deleteProject = useCallback(async (id, userId) => {
-    await projectService.deleteProject(id, userId)
+  const deleteProject = useCallback(async (id) => {
+    await projectService.deleteProject(id)
     dispatch({ type: 'REMOVE', id })
   }, [])
 
-  const addMember = useCallback(async (projectId, userId, actorId) => {
-    const project = await projectService.addMember(projectId, userId, actorId)
-    if (project) dispatch({ type: 'UPDATE', project })
+  const addMember = useCallback(async (projectId, userId) => {
+    await projectService.addMember(projectId, userId)
+    const project = await projectService.getProjectById(projectId)
+    dispatch({ type: 'UPDATE', project })
     return project
   }, [])
 
-  const removeMember = useCallback(async (projectId, userId, actorId) => {
-    const project = await projectService.removeMember(projectId, userId, actorId)
-    if (project) dispatch({ type: 'UPDATE', project })
+  const removeMember = useCallback(async (projectId, userId) => {
+    await projectService.removeMember(projectId, userId)
+    const project = await projectService.getProjectById(projectId)
+    dispatch({ type: 'UPDATE', project })
     return project
-  }, [])
-
-  const syncProjectCounts = useCallback((projectId) => {
-    const { tasksCount, progress } = projectService.updateTasksCount(projectId)
-    dispatch({ type: 'SYNC_COUNTS', projectId, tasksCount, progress })
   }, [])
 
   const getProjectById = useCallback((id) => {
@@ -94,7 +83,6 @@ export function ProjectProvider({ children }) {
       deleteProject,
       addMember,
       removeMember,
-      syncProjectCounts,
       getProjectById,
     }}>
       {children}
