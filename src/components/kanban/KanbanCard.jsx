@@ -6,7 +6,7 @@ import Avatar from '@/components/ui/Avatar'
 import { formatShortDate, isOverdue, isDueSoon } from '@/utils/formatters'
 import { cn } from '@/utils/cn'
 
-export default function KanbanCard({ task, assignee, onClick, isDragging }) {
+export default function KanbanCard({ task, assignee, onClick, isDragging, isMoving }) {
   const {
     attributes,
     listeners,
@@ -14,7 +14,7 @@ export default function KanbanCard({ task, assignee, onClick, isDragging }) {
     transform,
     transition,
     isDragging: isSortableDragging,
-  } = useSortable({ id: task.id })
+  } = useSortable({ id: task.id, disabled: isMoving })
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -29,13 +29,20 @@ export default function KanbanCard({ task, assignee, onClick, isDragging }) {
       ref={setNodeRef}
       style={style}
       className={cn(
-        'group bg-white rounded-xl border border-gray-100 p-3.5',
+        'relative group bg-white rounded-xl border border-gray-100 p-3.5',
         'hover:shadow-md hover:border-gray-200 hover:-translate-y-0.5',
         'transition-all duration-150 select-none',
         isSortableDragging && 'opacity-40 shadow-none',
-        isDragging && 'cursor-grabbing'
+        isDragging && 'cursor-grabbing',
+        isMoving && 'opacity-60 pointer-events-none'
       )}
     >
+      {isMoving && (
+        <div className="absolute inset-0 flex items-center justify-center bg-white/60 rounded-xl z-10">
+          <div className="w-4 h-4 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      )}
+
       <div className="flex items-start gap-2">
         {/* Drag handle */}
         <div

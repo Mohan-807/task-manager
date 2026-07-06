@@ -40,7 +40,7 @@ export default function ProjectDetails() {
   const activeTab = searchParams.get('tab') || 'overview'
 
   const { user } = useAuth()
-  const { projects, updateProject, deleteProject } = useProjects()
+  const { projects, updateProject, deleteProject, fetchProjectById } = useProjects()
   const { getTasksForProject, loadTasksForProject } = useTasks()
   const { users } = useUsers()
   const toast = useNotification()
@@ -48,21 +48,41 @@ export default function ProjectDetails() {
   const [editOpen, setEditOpen] = useState(false)
   const [saving, setSaving]     = useState(false)
   const [projectActivities, setProjectActivities] = useState([])
+  const [notFound, setNotFound] = useState(false)
 
-  const project = projects.find(p => p.id === id)
+  // `id` from useParams() is always a string; project ids from the API may be
+  // numbers — compare as strings so this doesn't break (and loop-refetch, since
+  // a failed match here also fails the `some()` upsert check in ProjectContext).
+  const project = projects.find(p => String(p.id) === id)
+
+  // Project list may not have loaded (or never will, e.g. a direct link) by the
+  // time this page mounts — fetch it by id instead of trusting list membership.
+  useEffect(() => {
+    setNotFound(false)
+    if (projects.find(p => String(p.id) === id)) return
+    fetchProjectById(id).catch(() => setNotFound(true))
+  }, [id, projects, fetchProjectById])
 
   useEffect(() => {
+    if (!project) return
     loadTasksForProject(id)
     activityService.getProjectActivities(id, { limit: 20 }).then(({ data }) => setProjectActivities(data))
-  }, [id, loadTasksForProject])
+  }, [id, project, loadTasksForProject])
 
   if (!project) {
+    if (notFound) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+          <p className="text-gray-500 text-sm">Project not found.</p>
+          <Link to="/projects" className="text-indigo-600 text-sm font-medium hover:underline">
+            ← Back to Projects
+          </Link>
+        </div>
+      )
+    }
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-        <p className="text-gray-500 text-sm">Project not found.</p>
-        <Link to="/projects" className="text-indigo-600 text-sm font-medium hover:underline">
-          ← Back to Projects
-        </Link>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="w-8 h-8 border-2 border-indigo-500 border-t-transparent rounded-full animate-spin" />
       </div>
     )
   }
@@ -199,7 +219,7 @@ export default function ProjectDetails() {
         )}
 
         {activeTab === 'board' && (
-          <KanbanBoard tasks={tasks} users={users} projectId={id} />
+          <KanbanBoard tasks={tasks} users={users} members={members} projectId={id} />
         )}
 
         {activeTab === 'members' && (

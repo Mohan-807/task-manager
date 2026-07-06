@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react'
-import { FolderKanban, CheckSquare, Users, TrendingUp } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import { FolderKanban, CheckSquare, Users, TrendingUp, AlertCircle } from 'lucide-react'
 import PageHeader from '@/components/ui/PageHeader'
 import StatsCard from '@/components/dashboard/StatsCard'
 import RecentProjects from '@/components/dashboard/RecentProjects'
@@ -9,22 +9,27 @@ import ActivityTimeline from '@/components/dashboard/ActivityTimeline'
 import { SkeletonStatCard, SkeletonDashboardBlock } from '@/components/ui/Skeleton'
 import { useAuth } from '@/contexts/AuthContext'
 import { useProjects } from '@/contexts/ProjectContext'
+import { useTasks } from '@/contexts/TaskContext'
 import { dashboardService } from '@/services/dashboardService'
 
 export default function Dashboard() {
   const { user } = useAuth()
   const { projects, loading: projLoading } = useProjects()
+  const { tasks } = useTasks()
 
   const [stats, setStats] = useState(null)
   const [recentProjects, setRecentProjects] = useState([])
   const [recentTasks, setRecentTasks] = useState([])
   const [recentActivities, setRecentActivities] = useState([])
   const [dashLoading, setDashLoading] = useState(true)
+  const [dashError, setDashError] = useState(null)
   const [showSkeleton, setShowSkeleton] = useState(true)
 
   const loading = projLoading || dashLoading
 
-  useEffect(() => {
+  const loadDashboard = useCallback(() => {
+    setDashLoading(true)
+    setDashError(null)
     Promise.all([
       dashboardService.getStats(),
       dashboardService.getRecentProjects(),
@@ -36,8 +41,15 @@ export default function Dashboard() {
       setRecentTasks(tasksRes)
       setRecentActivities(activitiesRes)
       setDashLoading(false)
+    }).catch(err => {
+      setDashError(err.message)
+      setDashLoading(false)
     })
   }, [])
+
+  useEffect(() => {
+    loadDashboard()
+  }, [loadDashboard, projects, tasks])
 
   useEffect(() => {
     if (!loading) {
@@ -85,6 +97,21 @@ export default function Dashboard() {
         title="Dashboard"
         description={`Welcome back, ${firstName}. Here's what's happening today.`}
       />
+
+      {dashError && !dashLoading && (
+        <div className="flex items-center justify-between gap-2.5 p-3 bg-red-50 border border-red-100 rounded-xl">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle size={15} className="text-red-500 shrink-0 mt-0.5" />
+            <p className="text-sm text-red-600">{dashError}</p>
+          </div>
+          <button
+            onClick={loadDashboard}
+            className="text-sm font-medium text-red-600 hover:text-red-700 transition-colors shrink-0"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {/* Stats Row */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">

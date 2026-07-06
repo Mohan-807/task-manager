@@ -11,7 +11,7 @@ const COLUMN_CONFIG = {
   done:        { label: 'Done',        dot: 'bg-emerald-500', header: 'bg-emerald-50', border: 'border-emerald-100'},
 }
 
-export default function KanbanColumn({ columnId, tasks, users, activeId, onCardClick, onAddTask, canCreate }) {
+export default function KanbanColumn({ columnId, tasks, users, activeId, movingTaskId, onCardClick, onAddTask, canCreate }) {
   const config = COLUMN_CONFIG[columnId]
 
   const { setNodeRef, isOver } = useDroppable({ id: columnId })
@@ -63,6 +63,7 @@ export default function KanbanColumn({ columnId, tasks, users, activeId, onCardC
               assignee={getUser(task.assigneeId)}
               onClick={() => onCardClick(task)}
               isDragging={activeId === task.id}
+              isMoving={movingTaskId === task.id}
             />
           ))}
 

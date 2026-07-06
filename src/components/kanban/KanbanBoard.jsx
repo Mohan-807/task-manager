@@ -25,13 +25,14 @@ const DROP_ANIMATION = {
   }),
 }
 
-export default function KanbanBoard({ tasks, users, projectId }) {
+export default function KanbanBoard({ tasks, users, members, projectId }) {
   const { user } = useAuth()
   const { moveTask, createTask, deleteTask, updateTask } = useTasks()
   const toast = useNotification()
 
   const [activeId, setActiveId]         = useState(null)
   const [selectedTask, setSelectedTask] = useState(null)
+  const [movingTaskId, setMovingTaskId] = useState(null)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -52,7 +53,10 @@ export default function KanbanBoard({ tasks, users, projectId }) {
 
   const canCreate = hasPermission(user?.role, 'task:create')
 
-  const handleDragStart = ({ active }) => setActiveId(active.id)
+  const handleDragStart = ({ active }) => {
+    if (movingTaskId != null) return
+    setActiveId(active.id)
+  }
 
   const handleDragEnd = useCallback(async ({ active, over }) => {
     setActiveId(null)
@@ -85,10 +89,17 @@ export default function KanbanBoard({ tasks, users, projectId }) {
     const colTasks  = tasks.filter(t => t.projectId === projectId && t.status === targetColumn)
     const newOrder  = colTasks.length + 1
 
-    await moveTask(taskId, targetColumn, newOrder)
-
     const colLabel = { todo: 'Todo', in_progress: 'In Progress', testing: 'Testing', done: 'Done' }
-    toast.success('Task moved', `Moved to ${colLabel[targetColumn] ?? targetColumn}`)
+
+    setMovingTaskId(taskId)
+    try {
+      await moveTask(taskId, targetColumn, newOrder)
+      toast.success('Task moved', `Moved to ${colLabel[targetColumn] ?? targetColumn}`)
+    } catch {
+      toast.error('Failed to move task')
+    } finally {
+      setMovingTaskId(null)
+    }
   }, [tasks, user, projectId, moveTask, toast])
 
   const handleAddTask = useCallback(async (columnId) => {
@@ -144,6 +155,7 @@ export default function KanbanBoard({ tasks, users, projectId }) {
               tasks={tasksByColumn[col]}
               users={users}
               activeId={activeId}
+              movingTaskId={movingTaskId}
               onCardClick={setSelectedTask}
               onAddTask={handleAddTask}
               canCreate={canCreate}
@@ -167,6 +179,7 @@ export default function KanbanBoard({ tasks, users, projectId }) {
       <TaskDrawer
         task={selectedTask}
         users={users}
+        members={members}
         isOpen={!!selectedTask}
         onClose={() => setSelectedTask(null)}
         onSave={handleSaveTask}

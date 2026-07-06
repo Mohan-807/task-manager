@@ -1,9 +1,10 @@
 import Avatar from '@/components/ui/Avatar'
+import EmptyState from '@/components/ui/EmptyState'
 import { timeAgo } from '@/utils/formatters'
 import { cn } from '@/utils/cn'
 import {
   GitCommitHorizontal, MessageSquare, UserPlus,
-  AlertCircle, FolderPlus, RefreshCw,
+  AlertCircle, FolderPlus, RefreshCw, Activity,
 } from 'lucide-react'
 
 const TYPE_CONFIG = {
@@ -21,42 +22,49 @@ export default function ActivityTimeline({ activities }) {
       <h2 className="text-base font-semibold text-gray-900 mb-1">Activity</h2>
       <p className="text-xs text-gray-400 mb-5">Recent team activity</p>
 
-      <div className="relative">
-        {/* Vertical line */}
-        <div className="absolute left-[18px] top-0 bottom-0 w-px bg-gray-100" />
+      {activities.length === 0 ? (
+        <EmptyState
+          icon={Activity}
+          title="No activity yet"
+          description="Team activity across your projects will show up here."
+        />
+      ) : (
+        <div className="relative">
+          {/* Vertical line */}
+          <div className="absolute left-[18px] top-0 bottom-0 w-px bg-gray-100" />
 
-        <div className="space-y-4">
-          {activities.map((activity, idx) => {
-            const config = TYPE_CONFIG[activity.type] ?? TYPE_CONFIG.task_created
-            const Icon = config.icon
+          <div className="space-y-4">
+            {activities.map((activity, idx) => {
+              const config = TYPE_CONFIG[activity.type] ?? TYPE_CONFIG.task_created
+              const Icon = config.icon
 
-            return (
-              <div key={activity.id} className="flex gap-3 relative">
-                {/* Icon bubble */}
-                <div className={cn(
-                  'w-9 h-9 rounded-full flex items-center justify-center shrink-0 z-10',
-                  config.color
-                )}>
-                  <Icon size={15} />
-                </div>
+              return (
+                <div key={activity.id} className="flex gap-3 relative">
+                  {/* Icon bubble */}
+                  <div className={cn(
+                    'w-9 h-9 rounded-full flex items-center justify-center shrink-0 z-10',
+                    config.color
+                  )}>
+                    <Icon size={15} />
+                  </div>
 
-                {/* Content */}
-                <div className="flex-1 min-w-0 pt-1.5">
-                  <div className="flex items-start justify-between gap-2">
-                    <p
-                      className="text-xs text-gray-600 leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: activity.message }}
-                    />
-                    <span className="text-[11px] text-gray-400 shrink-0 mt-0.5">
-                      {timeAgo(activity.createdAt)}
-                    </span>
+                  {/* Content */}
+                  <div className="flex-1 min-w-0 pt-1.5">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-xs text-gray-600 leading-relaxed">
+                        {activity.message}
+                      </p>
+                      <span className="text-[11px] text-gray-400 shrink-0 mt-0.5">
+                        {timeAgo(activity.createdAt)}
+                      </span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

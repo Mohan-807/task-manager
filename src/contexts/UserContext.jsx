@@ -60,7 +60,9 @@ export function UserProvider({ children }) {
   }, [])
 
   const getUserById = useCallback((id) => {
-    return state.users.find(u => u.id === id) ?? null
+    // id may come from a route param or other string boundary while u.id is
+    // numeric from the API — compare as strings defensively.
+    return state.users.find(u => String(u.id) === String(id)) ?? null
   }, [state.users])
 
   // Sync a single user update from outside (e.g. project member changes)

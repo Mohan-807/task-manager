@@ -137,7 +137,7 @@ function CommentItem({ comment, author, currentUserId, isAdmin, onEdit, onDelete
   )
 }
 
-export default function TaskDrawer({ task, users, isOpen, onClose, onSave, onDelete }) {
+export default function TaskDrawer({ task, users, members, isOpen, onClose, onSave, onDelete }) {
   const { user } = useAuth()
   const { loadComments, comments: allComments, addComment, updateComment, deleteComment } = useTasks()
   const toast = useNotification()
@@ -272,7 +272,7 @@ export default function TaskDrawer({ task, users, isOpen, onClose, onSave, onDel
 
           <MetaRow label="Assignee">
             <div className="flex flex-wrap gap-2">
-              {users.map(u => (
+              {(members ?? users).map(u => (
                 <button
                   key={u.id}
                   type="button"

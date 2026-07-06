@@ -1,6 +1,7 @@
 import { createContext, useContext, useReducer, useCallback } from 'react'
 import { taskService } from '@/services/taskService'
 import { commentService } from '@/services/commentService'
+import { useProjects } from '@/contexts/ProjectContext'
 
 const TaskContext = createContext(null)
 
@@ -16,7 +17,9 @@ function reducer(state, action) {
     case 'LOAD_TASKS_START': return { ...state, loading: true, error: null }
     case 'LOAD_TASKS_OK':    return {
       ...state,
-      tasks: [...state.tasks.filter(t => t.projectId !== action.projectId), ...action.tasks],
+      // action.projectId can be a route-param string while t.projectId is numeric
+      // from the API — compare as strings to avoid leaving stale tasks in state.
+      tasks: [...state.tasks.filter(t => String(t.projectId) !== String(action.projectId)), ...action.tasks],
       loading: false,
     }
     case 'LOAD_TASKS_FAIL':  return { ...state, loading: false, error: action.error }
@@ -87,6 +90,7 @@ function reducer(state, action) {
 
 export function TaskProvider({ children }) {
   const [state, dispatch] = useReducer(reducer, initialState)
+  const { fetchProjectById } = useProjects()
 
   const loadTasksForProject = useCallback(async (projectId, params) => {
     dispatch({ type: 'LOAD_TASKS_START' })
@@ -101,8 +105,9 @@ export function TaskProvider({ children }) {
   const createTask = useCallback(async (data) => {
     const task = await taskService.createTask(data)
     dispatch({ type: 'ADD_TASK', task })
+    await fetchProjectById(String(task.projectId))
     return task
-  }, [])
+  }, [fetchProjectById])
 
   const updateTask = useCallback(async (id, data) => {
     const task = await taskService.updateTask(id, data)
@@ -110,21 +115,26 @@ export function TaskProvider({ children }) {
     return task
   }, [])
 
-  const moveTaskInstant = useCallback((id, status, order) => {
-    dispatch({ type: 'MOVE_TASK_INSTANT', id, status, order })
-  }, [])
-
   const moveTask = useCallback(async (id, newStatus, newOrder) => {
+    const prevTask = state.tasks.find(t => t.id === id)
     dispatch({ type: 'MOVE_TASK_INSTANT', id, status: newStatus, order: newOrder })
-    const task = await taskService.moveTask(id, newStatus, newOrder)
-    dispatch({ type: 'UPDATE_TASK', task })
-    return task
-  }, [])
+    try {
+      const task = await taskService.moveTask(id, newStatus, newOrder)
+      dispatch({ type: 'UPDATE_TASK', task })
+      if (prevTask) await fetchProjectById(String(prevTask.projectId))
+      return task
+    } catch (err) {
+      if (prevTask) dispatch({ type: 'MOVE_TASK_INSTANT', id, status: prevTask.status, order: prevTask.columnOrder })
+      throw err
+    }
+  }, [state.tasks, fetchProjectById])
 
   const deleteTask = useCallback(async (id) => {
+    const task = state.tasks.find(t => t.id === id)
     await taskService.deleteTask(id)
     dispatch({ type: 'REMOVE_TASK', id })
-  }, [])
+    if (task) await fetchProjectById(String(task.projectId))
+  }, [state.tasks, fetchProjectById])
 
   const loadComments = useCallback(async (taskId) => {
     const { data: comments } = await commentService.getCommentsForTask(taskId)
@@ -150,7 +160,9 @@ export function TaskProvider({ children }) {
   }, [])
 
   const getTasksForProject = useCallback((projectId) => {
-    return state.tasks.filter(t => t.projectId === projectId)
+    // projectId may come from useParams() (always a string) while t.projectId is
+    // numeric from the API — compare as strings so this doesn't silently match nothing.
+    return state.tasks.filter(t => String(t.projectId) === String(projectId))
   }, [state.tasks])
 
   return (
@@ -159,7 +171,6 @@ export function TaskProvider({ children }) {
       loadTasksForProject,
       createTask,
       updateTask,
-      moveTaskInstant,
       moveTask,
       deleteTask,
       loadComments,

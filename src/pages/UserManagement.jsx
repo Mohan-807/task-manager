@@ -38,7 +38,7 @@ const BLANK = { name: '', email: '', role: 'developer', status: 'active' }
 export default function UserManagement() {
   const { user: currentUser } = useAuth()
   const { users, loading, createUser, updateUser, deleteUser } = useUsers()
-  const { projects } = useProjects()
+  const { projects, loadProjects } = useProjects()
   const toast = useNotification()
 
   const [search, setSearch]           = useState('')
@@ -108,6 +108,7 @@ export default function UserManagement() {
     setSaving(true)
     try {
       await updateUser(editTarget.id, { name: form.name.trim(), email: form.email.trim(), role: form.role, status: form.status })
+      await loadProjects()
       toast.success('User updated', `${form.name} has been saved.`)
       setEditTarget(null)
     } catch {
@@ -125,6 +126,7 @@ export default function UserManagement() {
     }
     try {
       await deleteUser(deleteTarget.id)
+      await loadProjects()
       toast.success('User deleted', `${deleteTarget.name} has been removed.`)
       setDeleteTarget(null)
     } catch {

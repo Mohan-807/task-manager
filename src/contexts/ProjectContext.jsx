@@ -17,7 +17,9 @@ function reducer(state, action) {
     case 'ADD':        return { ...state, projects: [action.project, ...state.projects] }
     case 'UPDATE':     return {
       ...state,
-      projects: state.projects.map(p => p.id === action.project.id ? action.project : p),
+      projects: state.projects.some(p => p.id === action.project.id)
+        ? state.projects.map(p => p.id === action.project.id ? action.project : p)
+        : [...state.projects, action.project],
     }
     case 'REMOVE':     return { ...state, projects: state.projects.filter(p => p.id !== action.id) }
     default: return state
@@ -71,8 +73,19 @@ export function ProjectProvider({ children }) {
   }, [])
 
   const getProjectById = useCallback((id) => {
-    return state.projects.find(p => p.id === id) ?? null
+    // id may come from useParams() (string) while p.id is numeric from the API.
+    return state.projects.find(p => String(p.id) === String(id)) ?? null
   }, [state.projects])
+
+  // Fetches a single project from the API and upserts it into state — needed for
+  // direct links / hard refreshes on /projects/:id, where the full list hasn't
+  // loaded (or won't ever include it, e.g. a manager linked into a project they
+  // don't own) by the time the detail page mounts.
+  const fetchProjectById = useCallback(async (id) => {
+    const project = await projectService.getProjectById(id)
+    dispatch({ type: 'UPDATE', project })
+    return project
+  }, [])
 
   return (
     <ProjectContext.Provider value={{
@@ -84,6 +97,7 @@ export function ProjectProvider({ children }) {
       addMember,
       removeMember,
       getProjectById,
+      fetchProjectById,
     }}>
       {children}
     </ProjectContext.Provider>
