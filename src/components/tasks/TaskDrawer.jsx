@@ -149,11 +149,12 @@ export default function TaskDrawer({ task, users, members, isOpen, onClose, onSa
   const [sendingComment, setSendingComment] = useState(false)
   const [taskActivities, setTaskActivities] = useState([])
 
-  const comments = task ? (allComments[task.id] ?? []) : []
+  const isNew = !!form && !form.id
+  const comments = task?.id ? (allComments[task.id] ?? []) : []
 
   const isAdmin = user?.role === 'admin'
-  const canEdit = form ? canEditTask(user?.role, user?.id, form) : false
-  const canDelete = form ? canDeleteTask(user?.role, user?.id, form) : false
+  const canEdit = form ? (isNew || canEditTask(user?.role, user?.id, form)) : false
+  const canDelete = form ? (!isNew && canDeleteTask(user?.role, user?.id, form)) : false
   const canChangeStatus = canEdit && (form?.status !== 'done' || hasPermission(user?.role, 'task:reopen'))
   const canAssign = hasPermission(user?.role, 'task:assign')
 
@@ -162,8 +163,11 @@ export default function TaskDrawer({ task, users, members, isOpen, onClose, onSa
       setForm({ ...task })
       setNewComment('')
       setConfirmDelete(false)
-      loadComments(task.id)
-      activityService.getTaskActivities(task.id, { limit: 5 }).then(({ data }) => setTaskActivities(data))
+      setTaskActivities([])
+      if (task.id) {
+        loadComments(task.id)
+        activityService.getTaskActivities(task.id, { limit: 5 }).then(({ data }) => setTaskActivities(data))
+      }
     }
   }, [task, isOpen, loadComments])
 
@@ -216,7 +220,7 @@ export default function TaskDrawer({ task, users, members, isOpen, onClose, onSa
     <Drawer
       isOpen={isOpen}
       onClose={onClose}
-      title="Task Details"
+      title={isNew ? 'New Task' : 'Task Details'}
       width="md"
       footer={
         <>
@@ -236,7 +240,9 @@ export default function TaskDrawer({ task, users, members, isOpen, onClose, onSa
               <div className="flex gap-2 ml-auto">
                 <Button variant="secondary" size="sm" onClick={onClose}>Cancel</Button>
                 {canEdit && (
-                  <Button size="sm" onClick={handleSave} loading={saving}>Save Changes</Button>
+                  <Button size="sm" onClick={handleSave} loading={saving}>
+                    {isNew ? 'Create Task' : 'Save Changes'}
+                  </Button>
                 )}
               </div>
             </>
@@ -352,61 +358,63 @@ export default function TaskDrawer({ task, users, members, isOpen, onClose, onSa
         </div>
 
         {/* Comments */}
-        <div>
-          <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
-            <MessageSquare size={12} />
-            Comments
-            {comments.length > 0 && <span className="text-gray-300">({comments.length})</span>}
-          </label>
+        {!isNew && (
+          <div>
+            <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-3 flex items-center gap-2">
+              <MessageSquare size={12} />
+              Comments
+              {comments.length > 0 && <span className="text-gray-300">({comments.length})</span>}
+            </label>
 
-          {comments.length > 0 && (
-            <div className="space-y-3 mb-4 group">
-              {comments.map(comment => (
-                <CommentItem
-                  key={comment.id}
-                  comment={comment}
-                  author={getUser(comment.userId)}
-                  currentUserId={user?.id}
-                  isAdmin={isAdmin}
-                  onEdit={handleEditComment}
-                  onDelete={handleDeleteComment}
+            {comments.length > 0 && (
+              <div className="space-y-3 mb-4 group">
+                {comments.map(comment => (
+                  <CommentItem
+                    key={comment.id}
+                    comment={comment}
+                    author={getUser(comment.userId)}
+                    currentUserId={user?.id}
+                    isAdmin={isAdmin}
+                    onEdit={handleEditComment}
+                    onDelete={handleDeleteComment}
+                  />
+                ))}
+              </div>
+            )}
+
+            {/* New comment */}
+            <div className="flex gap-3">
+              <Avatar user={getUser(user?.id)} size="sm" className="shrink-0 mt-1" />
+              <div className="flex-1 relative">
+                <textarea
+                  value={newComment}
+                  onChange={e => setNewComment(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleAddComment()
+                  }}
+                  rows={2}
+                  placeholder="Add a comment… (⌘+Enter to send)"
+                  className={cn(
+                    'w-full text-sm text-gray-700 rounded-xl border border-gray-200 bg-gray-50',
+                    'px-3.5 py-2.5 pr-10 resize-none',
+                    'focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 focus:bg-white',
+                    'placeholder:text-gray-300 transition-all'
+                  )}
                 />
-              ))}
-            </div>
-          )}
-
-          {/* New comment */}
-          <div className="flex gap-3">
-            <Avatar user={getUser(user?.id)} size="sm" className="shrink-0 mt-1" />
-            <div className="flex-1 relative">
-              <textarea
-                value={newComment}
-                onChange={e => setNewComment(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleAddComment()
-                }}
-                rows={2}
-                placeholder="Add a comment… (⌘+Enter to send)"
-                className={cn(
-                  'w-full text-sm text-gray-700 rounded-xl border border-gray-200 bg-gray-50',
-                  'px-3.5 py-2.5 pr-10 resize-none',
-                  'focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-300 focus:bg-white',
-                  'placeholder:text-gray-300 transition-all'
-                )}
-              />
-              <button
-                onClick={handleAddComment}
-                disabled={!newComment.trim() || sendingComment}
-                className="absolute right-2.5 bottom-2.5 p-1 rounded-lg text-gray-300 hover:text-indigo-500 disabled:cursor-not-allowed transition-colors"
-              >
-                {sendingComment
-                  ? <span className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin block" />
-                  : <Send size={14} />
-                }
-              </button>
+                <button
+                  onClick={handleAddComment}
+                  disabled={!newComment.trim() || sendingComment}
+                  className="absolute right-2.5 bottom-2.5 p-1 rounded-lg text-gray-300 hover:text-indigo-500 disabled:cursor-not-allowed transition-colors"
+                >
+                  {sendingComment
+                    ? <span className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin block" />
+                    : <Send size={14} />
+                  }
+                </button>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Activity */}
         {taskActivities.length > 0 && (

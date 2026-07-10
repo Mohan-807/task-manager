@@ -19,13 +19,40 @@ export const taskService = {
     return task
   },
 
-  updateTask: async (id, data) => {
-    // Whitelisted so passing a full task-detail object (with nested assignee/reporter,
-    // commentsCount, etc.) never leaks read-only fields into the PATCH body.
-    const { title, description, status, priority, assigneeId, dueDate, tags } = data
-    const body = { title, description, status, priority, assigneeId, dueDate, tags }
+  // PATCH /tasks/:id only accepts title/description/tags — status, priority,
+  // assigneeId and dueDate each live behind their own dedicated endpoint below
+  // (and each returns a partial shape), so a task edit fans out into whichever
+  // of those changed and merges the partial responses onto the original task
+  // instead of an extra GET — the caller's own list refetch will supersede
+  // this anyway once the project sync (triggered right after) completes.
+  updateTask: async (id, data, original = {}) => {
+    const { title, description, tags, status, priority, assigneeId, dueDate } = data
+
+    let task = { ...original, id }
+
+    const body = { title, description, tags }
     Object.keys(body).forEach(key => body[key] === undefined && delete body[key])
-    const { data: task } = await apiClient.patch(`/tasks/${id}`, body)
+    if (Object.keys(body).length) {
+      await apiClient.patch(`/tasks/${id}`, body)
+      task = { ...task, ...body }
+    }
+    if (status !== undefined && status !== original.status) {
+      await taskService.updateStatus(id, status)
+      task.status = status
+    }
+    if (priority !== undefined && priority !== original.priority) {
+      await taskService.updatePriority(id, priority)
+      task.priority = priority
+    }
+    if (assigneeId !== undefined && assigneeId !== original.assigneeId) {
+      await taskService.updateAssignee(id, assigneeId)
+      task.assigneeId = assigneeId
+    }
+    if (dueDate !== undefined && dueDate !== original.dueDate) {
+      await taskService.updateDueDate(id, dueDate)
+      task.dueDate = dueDate
+    }
+
     return task
   },
 

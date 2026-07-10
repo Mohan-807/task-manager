@@ -24,6 +24,7 @@ import { useTasks } from '@/contexts/TaskContext'
 import { useUsers } from '@/contexts/UserContext'
 import { useNotification } from '@/contexts/NotificationContext'
 import { activityService } from '@/services/activityService'
+import { useSafeFetch } from '@/hooks/useSafeFetch'
 import { hasPermission, canViewProject } from '@/utils/permissions'
 
 const TABS = [
@@ -42,8 +43,10 @@ export default function ProjectDetails() {
   const { user } = useAuth()
   const { projects, updateProject, deleteProject, fetchProjectById } = useProjects()
   const { getTasksForProject, loadTasksForProject } = useTasks()
-  const { users } = useUsers()
+  const { users, loadUsers } = useUsers()
   const toast = useNotification()
+
+  useSafeFetch(loadUsers, [loadUsers])
 
   const [editOpen, setEditOpen] = useState(false)
   const [saving, setSaving]     = useState(false)

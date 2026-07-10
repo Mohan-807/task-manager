@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import { useSafeFetch } from '@/hooks/useSafeFetch'
 import { FolderKanban, CheckSquare, Users, TrendingUp, AlertCircle } from 'lucide-react'
 import PageHeader from '@/components/ui/PageHeader'
 import StatsCard from '@/components/dashboard/StatsCard'
@@ -14,8 +15,10 @@ import { dashboardService } from '@/services/dashboardService'
 
 export default function Dashboard() {
   const { user } = useAuth()
-  const { projects, loading: projLoading } = useProjects()
+  const { projects, loading: projLoading, loadProjects } = useProjects()
   const { tasks } = useTasks()
+
+  useSafeFetch(loadProjects, [loadProjects])
 
   const [stats, setStats] = useState(null)
   const [recentProjects, setRecentProjects] = useState([])

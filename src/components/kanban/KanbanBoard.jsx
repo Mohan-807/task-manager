@@ -102,30 +102,38 @@ export default function KanbanBoard({ tasks, users, members, projectId }) {
     }
   }, [tasks, user, projectId, moveTask, toast])
 
-  const handleAddTask = useCallback(async (columnId) => {
+  const handleAddTask = useCallback((columnId) => {
     if (!canCreate) {
       toast.warning('Permission denied', 'You do not have permission to create tasks.')
       return
     }
-    const task = await createTask({
-      title: 'New Task',
+    setSelectedTask({
+      title: '',
+      description: '',
       status: columnId,
-      projectId,
       priority: 'medium',
+      assigneeId: null,
+      dueDate: null,
+      tags: [],
+      projectId,
+      reporterId: user?.id,
     })
-    setSelectedTask(task)
-    toast.success('Task created')
-  }, [canCreate, createTask, projectId, user, toast])
+  }, [canCreate, projectId, user, toast])
 
-  const handleSaveTask = useCallback(async (updated) => {
+  const handleSaveTask = useCallback(async (form) => {
     try {
-      await updateTask(updated.id, updated)
-      toast.success('Task saved')
+      if (form.id) {
+        await updateTask(form.id, form)
+        toast.success('Task saved')
+      } else {
+        await createTask(form)
+        toast.success('Task created')
+      }
       setSelectedTask(null)
     } catch {
       toast.error('Failed to save task')
     }
-  }, [updateTask, user, toast])
+  }, [createTask, updateTask, user, toast])
 
   const handleDeleteTask = useCallback(async (taskId) => {
     try {

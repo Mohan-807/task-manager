@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useSafeFetch } from '@/hooks/useSafeFetch'
 import { UserPlus, Pencil, Trash2, ShieldCheck } from 'lucide-react'
 import PageHeader from '@/components/ui/PageHeader'
 import Button from '@/components/ui/Button'
@@ -37,9 +38,12 @@ const BLANK = { name: '', email: '', role: 'developer', status: 'active' }
 
 export default function UserManagement() {
   const { user: currentUser } = useAuth()
-  const { users, loading, createUser, updateUser, deleteUser } = useUsers()
+  const { users, loading, createUser, updateUser, deleteUser, loadUsers } = useUsers()
   const { projects, loadProjects } = useProjects()
   const toast = useNotification()
+
+  useSafeFetch(loadUsers, [loadUsers])
+  useSafeFetch(loadProjects, [loadProjects])
 
   const [search, setSearch]           = useState('')
   const [roleFilter, setRoleFilter]   = useState('all')

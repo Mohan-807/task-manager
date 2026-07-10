@@ -5,6 +5,7 @@ import { UserProvider } from '@/contexts/UserContext'
 import { ProjectProvider } from '@/contexts/ProjectContext'
 import { TaskProvider } from '@/contexts/TaskContext'
 import AppLayout from '@/components/layout/AppLayout'
+import GlobalLoader from '@/components/ui/GlobalLoader'
 import Login from '@/pages/Login'
 import Dashboard from '@/pages/Dashboard'
 import Projects from '@/pages/Projects'
@@ -50,6 +51,7 @@ function AppProviders({ children }) {
 export default function App() {
   return (
     <BrowserRouter>
+      <GlobalLoader />
       <NotificationProvider>
         <AuthProvider>
           <Routes>

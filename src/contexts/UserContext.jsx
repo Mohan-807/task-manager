@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useCallback, useEffect } from 'react'
+import { createContext, useContext, useReducer, useCallback } from 'react'
 import { userService } from '@/services/userService'
 
 const UserContext = createContext(null)
@@ -33,8 +33,6 @@ export function UserProvider({ children }) {
       dispatch({ type: 'LOAD_FAIL', error: err.message })
     }
   }, [])
-
-  useEffect(() => { loadUsers() }, [loadUsers])
 
   const createUser = useCallback(async (data) => {
     const user = await userService.createUser(data)

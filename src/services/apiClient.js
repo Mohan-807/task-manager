@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { tokenService } from './tokenService'
+import { loaderStore } from './loaderStore'
 
 // Base URL and path prefix are read from env so both can change independently
 // once the backend is deployed — nothing else in the app needs to change.
@@ -12,11 +13,24 @@ export const apiClient = axios.create({
   headers: { 'Content-Type': 'application/json' },
 })
 
-apiClient.interceptors.request.use((config) => {
-  const token = tokenService.getAccessToken()
-  if (token) config.headers.Authorization = `Bearer ${token}`
-  return config
-})
+// GET requests feed pages that already show their own skeleton/glassy-card
+// loading state — only mutations (POST/PATCH/PUT/DELETE) drive the global loader.
+function usesGlobalLoader(config) {
+  return config.method?.toLowerCase() !== 'get'
+}
+
+apiClient.interceptors.request.use(
+  (config) => {
+    if (usesGlobalLoader(config)) loaderStore.show()
+    const token = tokenService.getAccessToken()
+    if (token) config.headers.Authorization = `Bearer ${token}`
+    return config
+  },
+  (error) => {
+    if (usesGlobalLoader(error.config ?? {})) loaderStore.hide()
+    return Promise.reject(error)
+  }
+)
 
 function normalizeError(error) {
   const detail = error.response?.data?.detail
@@ -43,7 +57,10 @@ async function refreshAccessToken() {
 }
 
 apiClient.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    if (usesGlobalLoader(response.config)) loaderStore.hide()
+    return response
+  },
   async (error) => {
     const { config, response } = error
 
@@ -54,15 +71,18 @@ apiClient.interceptors.response.use(
         const accessToken = await refreshPromise
         refreshPromise = null
         config.headers.Authorization = `Bearer ${accessToken}`
+        if (usesGlobalLoader(config)) loaderStore.hide() // settles the failed original call; retry's own request/response cycle tracks itself
         return apiClient(config)
       } catch (refreshError) {
         refreshPromise = null
         tokenService.clearTokens()
         window.dispatchEvent(new CustomEvent('auth:session-expired'))
+        if (usesGlobalLoader(config ?? {})) loaderStore.hide()
         return Promise.reject(normalizeError(refreshError))
       }
     }
 
+    if (usesGlobalLoader(config ?? {})) loaderStore.hide()
     return Promise.reject(normalizeError(error))
   }
 )

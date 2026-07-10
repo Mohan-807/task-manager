@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useCallback, useEffect } from 'react'
+import { createContext, useContext, useReducer, useCallback } from 'react'
 import { projectService } from '@/services/projectService'
 
 const ProjectContext = createContext(null)
@@ -38,8 +38,6 @@ export function ProjectProvider({ children }) {
       dispatch({ type: 'LOAD_FAIL', error: err.message })
     }
   }, [])
-
-  useEffect(() => { loadProjects() }, [loadProjects])
 
   const createProject = useCallback(async (data) => {
     const project = await projectService.createProject(data)

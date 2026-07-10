@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useSafeFetch } from '@/hooks/useSafeFetch'
 import { UserPlus, Users, Briefcase, Clock } from 'lucide-react'
 import PageHeader from '@/components/ui/PageHeader'
 import Button from '@/components/ui/Button'
@@ -37,9 +38,12 @@ const BLANK_INVITE = { name: '', email: '', role: 'developer' }
 
 export default function Members() {
   const { user: currentUser } = useAuth()
-  const { users, loading, inviteUser } = useUsers()
-  const { projects } = useProjects()
+  const { users, loading, inviteUser, loadUsers } = useUsers()
+  const { projects, loadProjects } = useProjects()
   const toast = useNotification()
+
+  useSafeFetch(loadUsers, [loadUsers])
+  useSafeFetch(loadProjects, [loadProjects])
 
   const canInvite = hasPermission(currentUser?.role, 'member:manage')
 

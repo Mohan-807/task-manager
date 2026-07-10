@@ -110,10 +110,12 @@ export function TaskProvider({ children }) {
   }, [fetchProjectById])
 
   const updateTask = useCallback(async (id, data) => {
-    const task = await taskService.updateTask(id, data)
+    const original = state.tasks.find(t => t.id === id) ?? {}
+    const task = await taskService.updateTask(id, data, original)
     dispatch({ type: 'UPDATE_TASK', task })
+    await fetchProjectById(String(task.projectId))
     return task
-  }, [])
+  }, [state.tasks, fetchProjectById])
 
   const moveTask = useCallback(async (id, newStatus, newOrder) => {
     const prevTask = state.tasks.find(t => t.id === id)

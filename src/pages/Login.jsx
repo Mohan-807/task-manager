@@ -13,21 +13,28 @@ const DEMO_ACCOUNTS = [
 
 export default function Login() {
   const navigate = useNavigate()
-  const { login, loading, error, clearError } = useAuth()
+  const { login, error, clearError } = useAuth()
   const toast = useNotification()
 
-  const [email, setEmail]           = useState('alex@company.io')
-  const [password, setPassword]     = useState('admin123')
+  const [email, setEmail]           = useState('')
+  const [password, setPassword]     = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [rememberMe, setRememberMe] = useState(true)
+
+  const [submitting, setSubmitting] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     clearError()
-    const result = await login(email.trim(), password)
-    if (result.ok) {
-      toast.success('Welcome back!', `Signed in as ${result.user.name}`)
-      navigate('/dashboard', { replace: true })
+    setSubmitting(true)
+    try {
+      const result = await login(email.trim(), password)
+      if (result.ok) {
+        toast.success('Welcome back!', `Signed in as ${result.user.name}`)
+        navigate('/dashboard', { replace: true })
+      }
+    } finally {
+      setSubmitting(false)
     }
   }
 
@@ -50,7 +57,7 @@ export default function Login() {
         </div>
 
         {/* Demo accounts */}
-        <div className="mb-4 p-3 bg-indigo-50 border border-indigo-100 rounded-xl">
+        {/* <div className="mb-4 p-3 bg-indigo-50 border border-indigo-100 rounded-xl">
           <p className="text-[11px] font-semibold text-indigo-500 uppercase tracking-wide mb-2">Demo Accounts</p>
           <div className="flex gap-1.5 flex-wrap">
             {DEMO_ACCOUNTS.map(a => (
@@ -64,7 +71,7 @@ export default function Login() {
               </button>
             ))}
           </div>
-        </div>
+        </div> */}
 
         {/* Card */}
         <div className="bg-white border border-gray-200 rounded-2xl p-8 shadow-sm">
@@ -125,10 +132,10 @@ export default function Login() {
 
             <button
               type="submit"
-              disabled={loading}
+              disabled={submitting}
               className="w-full py-2.5 px-4 bg-indigo-500 hover:bg-indigo-600 disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-lg transition-colors duration-150 shadow-sm flex items-center justify-center gap-2"
             >
-              {loading ? (
+              {submitting ? (
                 <>
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Signing in...

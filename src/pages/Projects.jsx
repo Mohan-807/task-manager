@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react'
+import { useSafeFetch } from '@/hooks/useSafeFetch'
 import { FolderKanban, Plus } from 'lucide-react'
 import PageHeader from '@/components/ui/PageHeader'
 import SearchBox from '@/components/ui/SearchBox'
@@ -24,9 +25,12 @@ const STATUS_FILTERS = [
 
 export default function Projects() {
   const { user } = useAuth()
-  const { projects, loading, createProject, updateProject, deleteProject } = useProjects()
-  const { users } = useUsers()
+  const { projects, loading, createProject, updateProject, deleteProject, loadProjects } = useProjects()
+  const { users, loadUsers } = useUsers()
   const toast = useNotification()
+
+  useSafeFetch(loadProjects, [loadProjects])
+  useSafeFetch(loadUsers, [loadUsers])
 
   const canCreate = hasPermission(user?.role, 'project:create')
   const canDelete  = hasPermission(user?.role, 'project:delete')
